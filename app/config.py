@@ -26,14 +26,14 @@ class Settings(BaseSettings):
     database_max_overflow: int = 20
     
     # Redis
-    redis_url: str = "redis://localhost:6379"
+    redis_url: str = "redis://localhost:6380"
     redis_db: int = 0
     redis_password: Optional[str] = None
     
     # AI Services (OpenAI Only)
     openai_api_key: Optional[str] = None
-    openai_model: str = "gpt-3.5-turbo"
-    vision_model: str = "gpt-4-vision-preview"
+    openai_model: str = "gpt-4"
+    vision_model: str = "gpt-4"
     tts_model: str = "tts-1"
     whisper_model: str = "whisper-1"
     

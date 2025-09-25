@@ -90,6 +90,39 @@ class AIService:
             logger.error(f"Error analyzing image: {e}")
             raise
     
+    async def analyze_image(self, prompt: str, image_base64: str, model: str = None, **kwargs) -> str:
+        """Analyze image using OpenAI Vision with base64 string"""
+        if not self.openai_client:
+            raise ValueError("OpenAI client not initialized")
+        
+        try:
+            # Use default vision model from config if not specified
+            if model is None:
+                model = settings.vision_model
+            
+            response = await self.openai_client.chat.completions.create(
+                model=model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{image_base64}"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                **kwargs
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            logger.error(f"Error analyzing image with base64: {e}")
+            raise
+    
     async def generate_audio(self, text: str, voice: str = "alloy") -> bytes:
         """Generate audio from text using OpenAI TTS"""
         if not self.openai_client:

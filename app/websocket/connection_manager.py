@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Dict, Set, Optional
 from fastapi import WebSocket
 from app.models.schemas import WebSocketMessage, MessageType
-from app.services.session_manager import session_manager
+# Removed session_manager dependency - using in-memory storage only
 import logging
 
 logger = logging.getLogger(__name__)
@@ -66,6 +66,9 @@ class ConnectionManager:
     async def send_personal_message(self, websocket: WebSocket, message: WebSocketMessage):
         """Send a message to a specific WebSocket connection"""
         try:
+            # Check if connection is still active
+            if websocket not in self.connection_to_session:
+                return
             await websocket.send_text(message.model_dump_json())
         except Exception as e:
             logger.error(f"Error sending personal message: {e}")
@@ -87,6 +90,10 @@ class ConnectionManager:
     
     async def send_heartbeat(self, websocket: WebSocket):
         """Send heartbeat to a specific connection"""
+        # Check if connection is still active
+        if websocket not in self.connection_to_session:
+            return
+            
         heartbeat_message = WebSocketMessage(
             message_type=MessageType.HEARTBEAT,
             data={"timestamp": str(datetime.utcnow())}
@@ -103,7 +110,11 @@ class ConnectionManager:
                 disconnected = []
                 for websocket in list(self.heartbeat_connections):
                     try:
-                        await self.send_heartbeat(websocket)
+                        # Check if connection is still active before sending heartbeat
+                        if websocket in self.connection_to_session:
+                            await self.send_heartbeat(websocket)
+                        else:
+                            disconnected.append(websocket)
                     except Exception as e:
                         logger.error(f"Error sending heartbeat: {e}")
                         disconnected.append(websocket)

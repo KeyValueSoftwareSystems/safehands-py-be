@@ -1,26 +1,24 @@
 """
-SafeHands Senior AI Assistant Backend
+SafeHands Backend - Full LLM Agent
 Main FastAPI application with WebSocket support
 """
 import asyncio
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import Dict, Any, Optional
+import base64
+import io
+from PIL import Image
 
 from app.config import settings
 from app.models.schemas import ConnectionRequest, ConnectionResponse
 from app.websocket.connection_manager import connection_manager
-# from app.websocket.message_router import message_router  # Removed - using direct WebSocket handling
-from app.agents.simple_swiggy_agent import simple_swiggy_agent
-from app.services.session_manager import session_manager
+from app.agents.simple_swiggy_agent import full_llm_swiggy_agent
 from app.services.in_memory_state_manager import in_memory_state_manager
-# from app.services.proactive_engagement import proactive_engagement_service  # Removed - not needed for simple agent
-# from app.services.performance_optimizer import performance_optimizer  # Removed - not needed for simple agent
-# from app.services.monitoring_system import monitoring_system
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -31,57 +29,35 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     # Startup
-    logger.info("Starting SafeHands Senior AI Assistant Backend...")
+    logger.info("Starting SafeHands Backend (Full LLM Agent)...")
     
-    # Connect to Redis (only for session management)
-    await session_manager.connect()
-    logger.info("Connected to Redis for session management")
-    
-    # Initialize in-memory state manager (no connection needed)
+    # Initialize in-memory state manager
     logger.info("Initialized in-memory state manager")
-    
-    # Initialize services (simplified for simple Swiggy agent)
-    # await performance_optimizer.initialize()  # Removed - not needed for simple agent
-    # logger.info("Initialized performance optimizer")
-    
-    # await monitoring_system.initialize()
-    # logger.info("Initialized monitoring system")
     
     # Start heartbeat task
     heartbeat_task = asyncio.create_task(connection_manager.start_heartbeat_task())
     logger.info("Started heartbeat task")
-    
-    # Start proactive engagement service (removed - not needed for simple agent)
-    # await proactive_engagement_service.start()
-    # logger.info("Started proactive engagement service")
     
     yield
     
     # Shutdown
     logger.info("Shutting down...")
     heartbeat_task.cancel()
-    # await proactive_engagement_service.stop()  # Removed - not needed for simple agent
-    
-    # Cleanup services (removed - not needed for simple agent)
-    # await performance_optimizer.cleanup()
-    # await monitoring_system.cleanup()
-    
-    await session_manager.disconnect()
     logger.info("Shutdown complete")
 
 
 # Create FastAPI app
 app = FastAPI(
     title=settings.app_name,
-    version=settings.app_version,
-    description="Backend for SafeHands Senior AI Assistant",
+    description="SafeHands Backend - Full LLM Agent",
+    version="1.0.0",
     lifespan=lifespan
 )
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -90,24 +66,22 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    """Root endpoint"""
+    """Root endpoint for V2"""
     return {
-        "message": "SafeHands Senior AI Assistant Backend",
-        "version": settings.app_version,
-        "status": "running"
+        "message": "SafeHands Backend V2 - Full LLM Agent",
+        "version": "2.0.0",
+        "status": "running",
+        "agent": "Full LLM Swiggy Agent"
     }
 
 
 @app.get("/health")
 async def health_check():
-    """Comprehensive health check endpoint for SafeHands Backend"""
+    """Comprehensive health check endpoint"""
     try:
-        # Check Redis connection
-        session_count = await session_manager.get_session_count()
-        connection_count = connection_manager.get_connection_count()
-        
-        # Check workflow state manager
+        # Check in-memory state manager
         workflow_sessions = await in_memory_state_manager.get_workflow_sessions()
+        connection_count = connection_manager.get_connection_count()
         
         # Check AI service (basic connectivity)
         ai_service_status = "available"
@@ -122,16 +96,16 @@ async def health_check():
         return {
             "status": "healthy",
             "service": "SafeHands Backend",
-            "version": settings.app_version,
+            "version": "1.0.0",
+            "agent": "Full LLM Swiggy Agent",
             "timestamp": datetime.now().isoformat(),
             "components": {
-                "redis": "connected",
+                "in_memory_storage": "active",
                 "websocket": "active",
                 "ai_service": ai_service_status,
                 "workflow_manager": "active"
             },
             "metrics": {
-                "active_sessions": session_count,
                 "active_connections": connection_count,
                 "active_workflows": len(workflow_sessions)
             },
@@ -146,7 +120,7 @@ async def health_check():
         logger.error(f"Health check failed: {e}")
         return {
             "status": "unhealthy",
-            "service": "SafeHands Backend",
+            "service": "SafeHands Backend V2",
             "error": str(e),
             "timestamp": datetime.now().isoformat()
         }
@@ -156,7 +130,8 @@ async def health_check():
 async def create_connection(request: ConnectionRequest):
     """Create a new session and return connection info"""
     try:
-        session_id = await session_manager.create_session(request.user_id)
+        import uuid
+        session_id = f"v2_{request.user_id}_{uuid.uuid4().hex[:8]}"
         
         return ConnectionResponse(
             session_id=session_id,
@@ -171,8 +146,6 @@ async def create_connection(request: ConnectionRequest):
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket endpoint for real-time communication"""
-    # For testing purposes, allow all connections without session validation
-    # In production, you would verify the session exists
     logger.info(f"WebSocket connection attempt for session: {session_id}")
     
     # Connect the WebSocket directly without session validation
@@ -183,19 +156,19 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             # Receive message from client
             message_data = await websocket.receive_text()
             
-            # Simple WebSocket handler for Swiggy demo
-            await handle_simple_websocket_message(websocket, session_id, message_data)
+            # Simple WebSocket handler for V2
+            await handle_v2_websocket_message(websocket, session_id, message_data)
             
     except WebSocketDisconnect:
-        logger.info(f"WebSocket disconnected for session: {session_id}")
+        logger.info(f"WebSocket V2 disconnected for session: {session_id}")
         connection_manager.disconnect(websocket)
     except Exception as e:
-        logger.error(f"WebSocket error for session {session_id}: {e}")
+        logger.error(f"WebSocket V2 error for session {session_id}: {e}")
         connection_manager.disconnect(websocket)
 
 
-async def handle_simple_websocket_message(websocket: WebSocket, session_id: str, message_data: str):
-    """Simple WebSocket message handler for Swiggy demo"""
+async def handle_v2_websocket_message(websocket: WebSocket, session_id: str, message_data: str):
+    """V2 WebSocket message handler with Full LLM Agent"""
     try:
         import json
         # Parse message
@@ -206,10 +179,10 @@ async def handle_simple_websocket_message(websocket: WebSocket, session_id: str,
         if not user_text or user_text.strip() == '':
             return
             
-        logger.info(f"🍔 [WEBSOCKET] Processing: {user_text}")
+        logger.info(f"🤖 [V2_WEBSOCKET] Processing: {user_text}")
         
-        # Process with simplified Swiggy agent
-        response = await simple_swiggy_agent.process_request(session_id, user_text)
+        # Process with Full LLM Agent
+        response = await full_llm_swiggy_agent.process_request(session_id, user_text)
         
         # Send response back
         response_data = {
@@ -222,10 +195,10 @@ async def handle_simple_websocket_message(websocket: WebSocket, session_id: str,
         }
         
         await websocket.send_text(json.dumps(response_data))
-        logger.info(f"🍔 [WEBSOCKET] Sent response to {session_id}")
+        logger.info(f"🤖 [WEBSOCKET] Sent response to {session_id}")
         
     except Exception as e:
-        logger.error(f"🍔 [WEBSOCKET] Error: {e}")
+        logger.error(f"🤖 [WEBSOCKET] Error: {e}")
         error_response = {
             "message_type": "error",
             "data": {"error_message": str(e)}
@@ -236,17 +209,22 @@ async def handle_simple_websocket_message(websocket: WebSocket, session_id: str,
 @app.get("/sessions/{session_id}")
 async def get_session_info(session_id: str):
     """Get session information"""
-    session = await session_manager.get_session(session_id)
-    if not session:
+    # Check if session has any workflow state
+    workflow_state = await in_memory_state_manager.load_workflow_state(session_id)
+    if not workflow_state:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    return session
+    return {
+        "session_id": session_id,
+        "workflow_state": workflow_state,
+        "status": "active"
+    }
 
 
 @app.delete("/sessions/{session_id}")
 async def delete_session(session_id: str):
     """Delete a session"""
-    success = await session_manager.delete_session(session_id)
+    success = await in_memory_state_manager.delete_workflow_state(session_id)
     if not success:
         raise HTTPException(status_code=404, detail="Session not found")
     
@@ -257,60 +235,19 @@ async def delete_session(session_id: str):
 async def get_stats():
     """Get system statistics"""
     try:
-        active_sessions = await session_manager.get_active_sessions()
+        workflow_sessions = await in_memory_state_manager.get_workflow_sessions()
         connection_count = connection_manager.get_connection_count()
         
         return {
-            "active_sessions": len(active_sessions),
+            "active_workflows": len(workflow_sessions),
             "active_connections": connection_count,
-            "session_ids": list(active_sessions)
+            "session_ids": list(workflow_sessions),
+            "version": "1.0.0",
+            "agent": "Full LLM Swiggy Agent"
         }
     except Exception as e:
         logger.error(f"Error getting stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to get statistics")
-
-
-# Week 4: Monitoring and Analytics Endpoints
-
-# @app.get("/monitoring/dashboard")
-# async def get_monitoring_dashboard():
-#     """Get real-time monitoring dashboard data"""
-#     try:
-#         dashboard_data = await monitoring_system.get_real_time_dashboard()
-#         return dashboard_data
-#     except Exception as e:
-#         logger.error(f"Error getting monitoring dashboard: {e}")
-#         raise HTTPException(status_code=500, detail="Internal server error")
-
-
-# @app.get("/monitoring/analytics")
-# async def get_analytics_report(
-#     start_time: Optional[str] = None,
-#     end_time: Optional[str] = None
-# ):
-#     """Get comprehensive analytics report"""
-#     try:
-#         from datetime import datetime
-#         
-#         start_dt = None
-#         end_dt = None
-#         
-#         if start_time:
-#             start_dt = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
-#         if end_time:
-#             end_dt = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
-#         
-#         report = await monitoring_system.get_analytics_report(start_dt, end_dt)
-#         return report
-#     except Exception as e:
-#         logger.error(f"Error getting analytics report: {e}")
-#         raise HTTPException(status_code=500, detail="Internal server error")
-
-
-# Monitoring endpoints removed - not needed for simple Swiggy agent
-# @app.get("/monitoring/performance")
-# @app.get("/monitoring/knowledge-base") 
-# @app.post("/monitoring/feedback")
 
 
 # ==================== WORKFLOW STATE MANAGEMENT ENDPOINTS ====================
@@ -365,7 +302,7 @@ async def mark_interruption_escalated(session_id: str):
         if success:
             return {"status": "success", "message": "Interruption marked as escalated"}
         else:
-            return {"status": "error", "message": "Failed to mark interruption as escalated"}
+            return {"status": "error", "message": "No interruption found to escalate"}
     except Exception as e:
         logger.error(f"Error marking interruption as escalated: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -400,38 +337,115 @@ async def get_active_workflow_sessions():
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-# ==================== SIMPLIFIED SWIGGY DEMO ENDPOINT ====================
+# ==================== V2 SWIGGY DEMO ENDPOINT ====================
 
 @app.post("/api/swiggy-demo")
-async def swiggy_demo(request: Dict[str, Any]):
-    """Simplified Swiggy ordering demo endpoint"""
+async def swiggy_demo_v2(request: Dict[str, Any]):
+    """V2 Swiggy ordering demo endpoint with Full LLM Agent"""
     try:
-        session_id = request.get("session_id", "demo_session")
+        session_id = request.get("session_id", "demo_session_v2")
         user_input = request.get("message", "")
         
-        logger.info(f"🍔 [SWIGGY_DEMO] Processing request: {user_input}")
+        logger.info(f"🤖 [V2_SWIGGY_DEMO] Processing request: {user_input}")
         
-        # Process with simplified agent
-        response = await simple_swiggy_agent.process_request(session_id, user_input)
+        # Process with Full LLM Agent
+        response = await full_llm_swiggy_agent.process_request(session_id, user_input)
         
         return {
             "session_id": response.session_id,
             "response_type": response.response_type.value,
             "content": response.content,
             "ui_element": response.ui_element,
-            "next_step": response.next_step
+            "next_step": response.next_step,
+            "version": "1.0.0",
+            "agent": "Full LLM Swiggy Agent"
         }
         
     except Exception as e:
-        logger.error(f"Error in Swiggy demo: {e}")
+        logger.error(f"Error in V2 Swiggy demo: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "app.main:app",
-        host=settings.host,
-        port=settings.port,
-        reload=settings.debug
-    )
+# ==================== IMAGE UPLOAD ENDPOINTS ====================
+
+@app.post("/api/upload-screenshot")
+async def upload_screenshot(
+    session_id: str = Form(...),
+    message: str = Form(""),
+    image: UploadFile = File(...)
+):
+    """Upload screenshot with optional text message for V2"""
+    try:
+        logger.info(f"📸 [V2_IMAGE_UPLOAD] Processing screenshot upload for session: {session_id}")
+        logger.info(f"📸 [V2_IMAGE_UPLOAD] Image filename: {image.filename}")
+        logger.info(f"📸 [V2_IMAGE_UPLOAD] Image content type: {image.content_type}")
+        logger.info(f"📸 [V2_IMAGE_UPLOAD] Message: {message}")
+        
+        # Validate image file
+        if not image.content_type or not image.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="File must be an image")
+        
+        # Read and process image
+        image_data = await image.read()
+        logger.info(f"📸 [V2_IMAGE_UPLOAD] Image size: {len(image_data)} bytes")
+        
+        # Check file size (max 20MB)
+        if len(image_data) > 20 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Image file too large. Maximum size is 20MB.")
+        
+        # Convert to base64 for processing
+        image_base64 = base64.b64encode(image_data).decode('utf-8')
+        
+        # Process with Full LLM Agent (with image)
+        response = await full_llm_swiggy_agent.process_request_with_image(session_id, message, image_base64)
+        
+        return {
+            "session_id": response.session_id,
+            "response_type": response.response_type.value,
+            "content": response.content,
+            "ui_element": response.ui_element,
+            "next_step": response.next_step,
+            "version": "1.0.0",
+            "agent": "Full LLM Swiggy Agent with Image Analysis",
+            "image_processed": True
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in V2 screenshot upload: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.post("/api/analyze-screenshot")
+async def analyze_screenshot(
+    session_id: str = Form(...),
+    image: UploadFile = File(...)
+):
+    """Analyze screenshot without workflow processing"""
+    try:
+        logger.info(f"🔍 [IMAGE_ANALYSIS] Processing screenshot analysis for session: {session_id}")
+        logger.info(f"🔍 [IMAGE_ANALYSIS] Image filename: {image.filename}")
+        
+        # Validate image file
+        if not image.content_type or not image.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="File must be an image")
+        
+        # Read and process image
+        image_data = await image.read()
+        logger.info(f"🔍 [V2_IMAGE_ANALYSIS] Image size: {len(image_data)} bytes")
+        
+        # Convert to base64 for processing
+        image_base64 = base64.b64encode(image_data).decode('utf-8')
+        
+        # Analyze image with Full LLM Agent
+        analysis = await full_llm_swiggy_agent.analyze_screenshot(image_base64)
+        
+        return {
+            "session_id": session_id,
+            "analysis": analysis,
+            "version": "1.0.0",
+            "agent": "Full LLM Swiggy Agent - Image Analysis"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in V2 screenshot analysis: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
