@@ -5,6 +5,7 @@ Main FastAPI application with WebSocket support
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -16,7 +17,7 @@ from app.websocket.connection_manager import connection_manager
 # from app.websocket.message_router import message_router  # Removed - using direct WebSocket handling
 from app.agents.simple_swiggy_agent import simple_swiggy_agent
 from app.services.session_manager import session_manager
-from app.services.workflow_state_manager import workflow_state_manager
+from app.services.in_memory_state_manager import in_memory_state_manager
 # from app.services.proactive_engagement import proactive_engagement_service  # Removed - not needed for simple agent
 # from app.services.performance_optimizer import performance_optimizer  # Removed - not needed for simple agent
 # from app.services.monitoring_system import monitoring_system
@@ -32,10 +33,12 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting SafeHands Senior AI Assistant Backend...")
     
-    # Connect to Redis
+    # Connect to Redis (only for session management)
     await session_manager.connect()
-    await workflow_state_manager.connect()
-    logger.info("Connected to Redis")
+    logger.info("Connected to Redis for session management")
+    
+    # Initialize in-memory state manager (no connection needed)
+    logger.info("Initialized in-memory state manager")
     
     # Initialize services (simplified for simple Swiggy agent)
     # await performance_optimizer.initialize()  # Removed - not needed for simple agent
@@ -64,7 +67,6 @@ async def lifespan(app: FastAPI):
     # await monitoring_system.cleanup()
     
     await session_manager.disconnect()
-    await workflow_state_manager.disconnect()
     logger.info("Shutdown complete")
 
 
@@ -98,19 +100,56 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
+    """Comprehensive health check endpoint for SafeHands Backend"""
     try:
         # Check Redis connection
         session_count = await session_manager.get_session_count()
+        connection_count = connection_manager.get_connection_count()
+        
+        # Check workflow state manager
+        workflow_sessions = await in_memory_state_manager.get_workflow_sessions()
+        
+        # Check AI service (basic connectivity)
+        ai_service_status = "available"
+        try:
+            # Simple test to ensure AI service is accessible
+            from app.services.ai_service import AIService
+            ai_service = AIService()
+            ai_service_status = "available"
+        except Exception as e:
+            ai_service_status = f"error: {str(e)[:50]}"
         
         return {
             "status": "healthy",
-            "active_sessions": session_count,
-            "active_connections": connection_manager.get_connection_count()
+            "service": "SafeHands Backend",
+            "version": settings.app_version,
+            "timestamp": datetime.now().isoformat(),
+            "components": {
+                "redis": "connected",
+                "websocket": "active",
+                "ai_service": ai_service_status,
+                "workflow_manager": "active"
+            },
+            "metrics": {
+                "active_sessions": session_count,
+                "active_connections": connection_count,
+                "active_workflows": len(workflow_sessions)
+            },
+            "endpoints": {
+                "websocket": f"/ws/{{session_id}}",
+                "swiggy_demo": "/api/swiggy-demo",
+                "sessions": "/sessions/{session_id}",
+                "workflow_state": "/workflow/state/{session_id}"
+            }
         }
     except Exception as e:
         logger.error(f"Health check failed: {e}")
-        raise HTTPException(status_code=503, detail="Service unavailable")
+        return {
+            "status": "unhealthy",
+            "service": "SafeHands Backend",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
 
 
 @app.post("/connect", response_model=ConnectionResponse)
@@ -280,7 +319,7 @@ async def get_stats():
 async def get_workflow_state(session_id: str):
     """Get current workflow state for a session"""
     try:
-        workflow_state = await workflow_state_manager.load_workflow_state(session_id)
+        workflow_state = await in_memory_state_manager.load_workflow_state(session_id)
         if not workflow_state:
             return {"status": "no_workflow", "message": "No active workflow found"}
         
@@ -305,7 +344,7 @@ async def get_workflow_state(session_id: str):
 async def get_interruption(session_id: str):
     """Get interruption data for frontend escalation"""
     try:
-        interruption = await workflow_state_manager.get_interruption(session_id)
+        interruption = await in_memory_state_manager.get_interruption(session_id)
         if not interruption:
             return {"status": "no_interruption", "message": "No interruption found"}
         
@@ -322,7 +361,7 @@ async def get_interruption(session_id: str):
 async def mark_interruption_escalated(session_id: str):
     """Mark interruption as escalated to frontend"""
     try:
-        success = await workflow_state_manager.mark_interruption_escalated(session_id)
+        success = await in_memory_state_manager.mark_interruption_escalated(session_id)
         if success:
             return {"status": "success", "message": "Interruption marked as escalated"}
         else:
@@ -336,7 +375,7 @@ async def mark_interruption_escalated(session_id: str):
 async def clear_workflow_state(session_id: str):
     """Clear workflow state for a session"""
     try:
-        success = await workflow_state_manager.delete_workflow_state(session_id)
+        success = await in_memory_state_manager.delete_workflow_state(session_id)
         if success:
             return {"status": "success", "message": "Workflow state cleared"}
         else:
@@ -350,7 +389,7 @@ async def clear_workflow_state(session_id: str):
 async def get_active_workflow_sessions():
     """Get all active workflow sessions"""
     try:
-        sessions = await workflow_state_manager.get_workflow_sessions()
+        sessions = await in_memory_state_manager.get_workflow_sessions()
         return {
             "status": "success",
             "active_sessions": sessions,

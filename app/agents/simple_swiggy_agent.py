@@ -4,7 +4,7 @@ Simplified Swiggy Ordering Agent for Demo
 import logging
 from typing import Dict, Any, Optional, List
 from app.models.schemas import AssistantResponse, ResponseType, UIElement
-from app.services.workflow_state_manager import workflow_state_manager
+from app.services.in_memory_state_manager import in_memory_state_manager
 from app.services.ai_service import AIService
 
 logger = logging.getLogger(__name__)
@@ -34,8 +34,8 @@ class SimpleSwiggyAgent:
         logger.info(f"🍔 [SWIGGY_AGENT] Input length: {len(user_input)} characters")
         
         try:
-            # Load existing state from Redis
-            existing_state = await workflow_state_manager.load_workflow_state(session_id)
+            # Load existing state from memory
+            existing_state = await in_memory_state_manager.load_workflow_state(session_id)
             
             if existing_state:
                 current_step = existing_state.get('current_step_index', 0)
@@ -87,9 +87,9 @@ class SimpleSwiggyAgent:
         }
         logger.info(f"🆕 [SWIGGY_AGENT] Workflow state created with {len(self.swiggy_steps)} steps")
         
-        # Save to Redis
-        logger.info(f"🆕 [SWIGGY_AGENT] Saving workflow state to Redis")
-        await workflow_state_manager.save_workflow_state(session_id, workflow_state)
+        # Save to memory
+        logger.info(f"🆕 [SWIGGY_AGENT] Saving workflow state to memory")
+        await in_memory_state_manager.save_workflow_state(session_id, workflow_state)
         logger.info(f"🆕 [SWIGGY_AGENT] Workflow state saved successfully")
         
         # Generate first step
@@ -168,8 +168,8 @@ class SimpleSwiggyAgent:
             logger.info(f"🎉 [SWIGGY_AGENT] All {len(workflow_steps)} steps completed successfully")
             
             # Clear workflow state
-            logger.info(f"🎉 [SWIGGY_AGENT] Clearing workflow state from Redis")
-            await workflow_state_manager.delete_workflow_state(session_id)
+            logger.info(f"🎉 [SWIGGY_AGENT] Clearing workflow state from memory")
+            await in_memory_state_manager.delete_workflow_state(session_id)
             logger.info(f"🎉 [SWIGGY_AGENT] Workflow state cleared")
             
             return AssistantResponse(
@@ -191,9 +191,9 @@ class SimpleSwiggyAgent:
             state['waiting_for_verification'] = True
             logger.info(f"✅ [SWIGGY_AGENT] Updated state - new step index: {next_step_index}")
             
-            # Save to Redis
-            logger.info(f"✅ [SWIGGY_AGENT] Saving updated state to Redis")
-            await workflow_state_manager.save_workflow_state(session_id, state)
+            # Save to memory
+            logger.info(f"✅ [SWIGGY_AGENT] Saving updated state to memory")
+            await in_memory_state_manager.save_workflow_state(session_id, state)
             logger.info(f"✅ [SWIGGY_AGENT] State saved successfully")
             
             response = AssistantResponse(
@@ -228,8 +228,8 @@ class SimpleSwiggyAgent:
             "workflow_status": state.get('workflow_status', 'unknown')
         }
         
-        logger.info(f"🚨 [SWIGGY_AGENT] Saving interruption data to Redis")
-        await workflow_state_manager.save_interruption(session_id, interruption_data)
+        logger.info(f"🚨 [SWIGGY_AGENT] Saving interruption data to memory")
+        await in_memory_state_manager.save_interruption(session_id, interruption_data)
         logger.info(f"🚨 [SWIGGY_AGENT] Interruption saved successfully")
         
         # Generate contextual response using LLM
