@@ -18,7 +18,7 @@ class FullLLMSwiggyAgent:
         self.swiggy_steps = [
             "Open the Swiggy app on your phone. If you don't see the Swiggy app, say 'I don't see the Swiggy app' and I'll help you find it.",
             "Search for the food you want to order. A simple search like 'Pizza' or 'Biriyani' will work. If you don't see the search bar, say 'I don't see the search bar' and I'll help you find it.",
-            "Select a restaurant from the results. If you don't find the restaurant, say 'I don't see the restaurant' and I'll help you find it.",
+            "Select a restaurant from the results. Always check the rating of the restaurant before selecting it. If you don't find the restaurant, say 'I don't see the restaurant' and I'll help you find it.",
             "Choose the items you want to order. If you don't find the item, say 'I don't see the item' and I'll help you find it.",
             "Add items to your cart. When clicked the Add button, you may asked to customize the item by adding toppings, sauces, etc. If you don't want to customize, just click Add Item button without selecting anything.",
             "Once you have added all the items you want to order, clickon the 'View Cart' button. If you don't see the 'View Cart' button, say 'I don't see the View Cart button' and I'll help you find it.",
