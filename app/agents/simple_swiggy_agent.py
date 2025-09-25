@@ -1,346 +1,358 @@
 """
-Simplified Swiggy Ordering Agent for Demo
+Simplified Swiggy Ordering Agent with Hardcoded Conversation Flow
 """
 import logging
 from typing import Dict, Any, Optional, List
 from app.models.schemas import AssistantResponse, ResponseType, UIElement
 from app.services.in_memory_state_manager import in_memory_state_manager
-from app.services.ai_service import AIService
 
 logger = logging.getLogger(__name__)
 
 
 class SimpleSwiggyAgent:
-    """Simplified agent for Swiggy ordering demo"""
+    """Simplified agent for Swiggy ordering with hardcoded conversation flow"""
     
     def __init__(self):
-        self.swiggy_steps = [
-            "Open the Swiggy app on your phone",
-            "Search for the food you want to order",
-            "Select a restaurant from the results",
-            "Choose the items you want to order",
-            "Add items to your cart",
-            "Review your order and proceed to checkout",
-            "Enter your delivery address",
-            "Select payment method and place order"
+        # Define the hardcoded conversation flow
+        self.conversation_steps = [
+            {
+                "step": 0,
+                "expected_input": "I need to order food online",
+                "response": """Hello! I'm here to help you order food online. 
+
+I can see you have food delivery apps on your phone. Let me tell you about the two main options:
+
+📱 **Swiggy** - This is a red and orange colored app with a white 'S' logo. Swiggy has many restaurants and usually delivers food quickly. They often have good discounts and offers.
+
+📱 **Zomato** - This is a red colored app with a white spoon and fork logo. Zomato also has many restaurants and good food options.
+
+Both apps are good for ordering food, but I'll help you with Swiggy today as it's very easy to use and reliable.
+
+Which app would you like to use? Please type "Swiggy" or "Zomato".""",
+                "next_expected": ["swiggy", "zomato"]
+            },
+            {
+                "step": 1,
+                "expected_input": "swiggy",
+                "response": """Great choice! Swiggy is an excellent app for ordering food.
+
+Now, let me help you open the Swiggy app on your phone:
+
+📱 **Look for the Swiggy app on your phone's home screen:**
+- It has a RED and ORANGE colored background
+- You'll see a big white letter "S" in the middle
+- The word "Swiggy" is written below it
+
+👆 **To open the app:**
+1. Find this red and orange Swiggy icon on your phone screen
+2. Tap on it once with your finger
+3. The app will open and show you the food ordering page
+
+Please find the Swiggy app and tap on it to open. Once you've opened the app, please type "done" so I can help you with the next step.""",
+                "next_expected": ["done"]
+            },
+            {
+                "step": 2,
+                "expected_input": "done",
+                "response": """Wonderful! Now you should be on the food delivery page.
+
+Here's what you should see on your screen:
+
+🔍 **At the top:** There's a white search bar (text box) where you can type something like 'Sweets' or 'Pizza'
+
+🍽️ **Below that:** You'll see a list of restaurants. Each restaurant shows:
+- The restaurant name
+- What kind of food they serve
+- How long it takes to deliver (like "30 mins")
+- Star ratings from other customers
+
+👉 **Did you reach this screen?** 
+If yes, please type 'Yes', and then I'll guide you on what to do next to find the food you want.""",
+                "next_expected": ["yes"]
+            },
+            {
+                "step": 3,
+                "expected_input": "yes",
+                "response": """Perfect! Now let's find the food you want to order.
+
+You have two ways to find food:
+
+🔍 **Option 1 - Use the Search Box (Recommended):**
+1. Look at the top of your screen - you'll see a WHITE box with light gray text
+2. Tap inside this white box with your finger
+3. Type the name of food you want (like "biryani", "pizza", "sweets", or "chicken")
+4. After typing, look for a small magnifying glass icon (🔍) and tap it
+   OR your phone's keyboard might show a "Search" button - tap that
+
+🍽️ **Option 2 - Browse Restaurants:**
+You can scroll down and look at the restaurant list to find one you like
+
+**Let's try the search method first.** Please:
+1. Tap the white search box at the top
+2. Type in the food you want to eat
+3. Tap the search button or magnifying glass icon
+4. Then type "done" once you've searched""",
+                "next_expected": ["done"]
+            },
+            {
+                "step": 4,
+                "expected_input": "done",
+                "response": """Excellent! Now you should see search results.
+
+You'll notice there are **TWO TABS** at the top of your results:
+📍 **"Restaurants"** tab - Shows restaurants that serve your food
+🍽️ **"Dishes"** tab - Shows specific food items
+
+Here's what to do:
+
+**If you want to pick a specific dish:**
+1. Tap on the "Dishes" tab
+2. Scroll down to see different food items
+3. When you find something you like, tap the "ADD" button next to it
+4. If a popup appears asking about customization (like spice level), choose what you want and tap "ADD ITEM" at the bottom
+5. For simple items, it will be added directly to your cart
+
+**If you want to browse a restaurant first:**
+1. Stay on the "Restaurants" tab  
+2. Tap on any restaurant name you like
+3. Browse their menu and add items
+
+**After adding items to your cart:**
+- You'll see a green "View Cart" button at the bottom
+- Tap "View Cart" when you're ready to order
+
+Please add the items you want and then type "done" when you've tapped "View Cart".""",
+                "next_expected": ["done"]
+            },
+            {
+                "step": 5,
+                "expected_input": "done",
+                "response": """Great! Now you're in the payments page.
+
+Here's what you should see:
+
+📋 **At the top of the page:** You can see all the food items you selected listed with their prices
+
+💰 **At the bottom:** You'll see the total amount you need to pay
+
+🛒 **To proceed with your order:**
+Look for a button that says "Proceed to Pay" or "Place Order" at the bottom of the screen.
+
+👆 **Tap this button** when you're happy with your order and ready to choose how to pay.
+
+Please tap "Proceed to Pay" and then type "done" once you've done this.""",
+                "next_expected": ["done"]
+            },
+            {
+                "step": 6,
+                "expected_input": "done",
+                "response": """Perfect! Now you're on the payment options page.
+
+You'll see different ways to pay for your food:
+
+💳 **Credit/Debit Card** - Pay with your bank card
+📱 **UPI** - Pay using apps like Google Pay, PhonePe, or Paytm  
+💵 **Pay on Delivery (Cash)** - Pay cash when the food arrives
+
+**I recommend choosing "Pay on Delivery" or "Cash on Delivery"** because:
+- It's the safest option for you
+- No need to enter card details
+- You can pay the delivery person when they bring your food
+
+👆 **Please look for "Pay on Delivery" or "Cash on Delivery"** option and tap on it.
+
+Once you've selected this payment method, please tell me "yes, pay on delivery" so I can help you complete your order.""",
+                "next_expected": ["yes, pay on delivery"]
+            },
+            {
+                "step": 7,
+                "expected_input": "yes, pay on delivery",
+                "response": """Excellent choice! Pay on Delivery is the safest and easiest option.
+
+Now you should see:
+
+💵 **Page Title:** "Pay on Delivery" or similar text at the top
+
+✅ **Green Button:** Look for a GREEN button at the bottom with text like:
+- "Pay With Cash" 
+- "Confirm Order"
+- "Place Order"
+
+👆 **Final Step:** Tap this green button to confirm and place your food order.
+
+💰 **Important Reminder:** 
+- Keep the exact cash amount ready
+- When the delivery person arrives with your food, pay them the total amount shown on your screen
+- They might not have change, so try to have the exact amount
+
+**Please tap the green "Pay With Cash" button to complete your order!**
+
+Your food will be prepared and delivered to your address. You'll get updates about your order status on the app.""",
+                "next_expected": ["order_complete"]
+            }
         ]
-        self.ai_service = AIService()
     
     async def process_request(self, session_id: str, user_input: str) -> AssistantResponse:
-        """Process user request with simple state machine"""
+        """Process user request with hardcoded conversation flow"""
         logger.info(f"🍔 [SWIGGY_AGENT] ===== Processing request =====")
         logger.info(f"🍔 [SWIGGY_AGENT] Session ID: {session_id}")
         logger.info(f"🍔 [SWIGGY_AGENT] User input: '{user_input}'")
         logger.info(f"🍔 [SWIGGY_AGENT] Input length: {len(user_input)} characters")
         
         try:
-            # Load existing state from memory
+            # Normalize user input for matching
+            user_input_lower = user_input.lower().strip()
+            
+            # Load existing conversation state
             existing_state = await in_memory_state_manager.load_workflow_state(session_id)
             
             if existing_state:
                 current_step = existing_state.get('current_step_index', 0)
-                workflow_status = existing_state.get('workflow_status', 'unknown')
-                logger.info(f"📂 [SWIGGY_AGENT] Loaded existing state:")
-                logger.info(f"📂 [SWIGGY_AGENT]   - Current step: {current_step}")
-                logger.info(f"📂 [SWIGGY_AGENT]   - Workflow status: {workflow_status}")
-                logger.info(f"📂 [SWIGGY_AGENT]   - Workflow type: {existing_state.get('workflow_type', 'none')}")
-                return await self._handle_existing_workflow(session_id, user_input, existing_state)
+                logger.info(f"📂 [SWIGGY_AGENT] Current conversation step: {current_step}")
+                return await self._handle_conversation_step(session_id, user_input_lower, current_step)
             else:
-                logger.info(f"🆕 [SWIGGY_AGENT] No existing state found - starting new workflow")
-                return await self._start_new_workflow(session_id, user_input)
+                logger.info(f"🆕 [SWIGGY_AGENT] Starting new conversation")
+                return await self._start_conversation(session_id, user_input_lower)
                 
         except Exception as e:
             logger.error(f"❌ [SWIGGY_AGENT] Error in process_request: {e}")
             logger.error(f"❌ [SWIGGY_AGENT] Error type: {type(e).__name__}")
             return self._get_error_response(session_id, str(e))
     
-    async def _start_new_workflow(self, session_id: str, user_input: str) -> AssistantResponse:
-        """Start a new Swiggy ordering workflow"""
-        logger.info(f"🆕 [SWIGGY_AGENT] Starting new workflow for session: {session_id}")
+    async def _start_conversation(self, session_id: str, user_input: str) -> AssistantResponse:
+        """Start a new conversation"""
+        logger.info(f"🆕 [SWIGGY_AGENT] Starting new conversation for session: {session_id}")
         
-        # Check if user wants to order food
-        is_swiggy_request = self._is_swiggy_request(user_input)
-        logger.info(f"🆕 [SWIGGY_AGENT] Is Swiggy request: {is_swiggy_request}")
-        
-        if not is_swiggy_request:
-            logger.info(f"🆕 [SWIGGY_AGENT] Not a Swiggy request - providing guidance")
+        # Check if user wants to order food (step 0)
+        if self._matches_step(user_input, 0):
+            logger.info(f"🆕 [SWIGGY_AGENT] User wants to order food - starting conversation")
+            
+            # Save initial state
+            conversation_state = {
+                "session_id": session_id,
+                "current_step_index": 0,
+                "workflow_type": "food_ordering_conversation",
+                "workflow_status": "active"
+            }
+            await in_memory_state_manager.save_workflow_state(session_id, conversation_state)
+            
+            # Return first response
+            step_data = self.conversation_steps[0]
             return AssistantResponse(
                 session_id=session_id,
                 response_type=ResponseType.INSTRUCTION,
-                content="I can help you order food from Swiggy! Just say 'I want to order food from Swiggy' to get started.",
-                ui_element=None,
-                next_step=None
-            )
-        
-        # Start workflow
-        logger.info(f"🆕 [SWIGGY_AGENT] Creating new workflow state")
-        workflow_state = {
-            "session_id": session_id,
-            "user_input": user_input,
-            "workflow_type": "swiggy_order_food",
-            "workflow_steps": self.swiggy_steps,
-            "current_step_index": 0,
-            "workflow_status": "active",
-            "waiting_for_verification": True,
-            "workflow_context": {},
-            "interruption_handled": False
-        }
-        logger.info(f"🆕 [SWIGGY_AGENT] Workflow state created with {len(self.swiggy_steps)} steps")
-        
-        # Save to memory
-        logger.info(f"🆕 [SWIGGY_AGENT] Saving workflow state to memory")
-        await in_memory_state_manager.save_workflow_state(session_id, workflow_state)
-        logger.info(f"🆕 [SWIGGY_AGENT] Workflow state saved successfully")
-        
-        # Generate first step
-        current_step = self.swiggy_steps[0]
-        content = f"Step 1 of {len(self.swiggy_steps)}: {current_step}\n\nLet me know when you've completed this step by saying 'done' or 'next'."
-        logger.info(f"🆕 [SWIGGY_AGENT] Generated first step: {current_step}")
-        
-        response = AssistantResponse(
-            session_id=session_id,
-            response_type=ResponseType.INSTRUCTION,
-            content=content,
-            ui_element=None,
-            next_step=None
-        )
-        logger.info(f"🆕 [SWIGGY_AGENT] Returning response with content length: {len(content)}")
-        return response
-    
-    async def _handle_existing_workflow(self, session_id: str, user_input: str, state: Dict[str, Any]) -> AssistantResponse:
-        """Handle existing workflow state"""
-        current_step_index = state.get('current_step_index', 0)
-        workflow_status = state.get('workflow_status', 'idle')
-        workflow_type = state.get('workflow_type', 'unknown')
-        
-        logger.info(f"🔄 [SWIGGY_AGENT] ===== Handling existing workflow =====")
-        logger.info(f"🔄 [SWIGGY_AGENT] Current step: {current_step_index}")
-        logger.info(f"🔄 [SWIGGY_AGENT] Workflow status: {workflow_status}")
-        logger.info(f"🔄 [SWIGGY_AGENT] Workflow type: {workflow_type}")
-        
-        # Check if user is confirming a step
-        is_verification = self._is_verification_response(user_input)
-        logger.info(f"🔄 [SWIGGY_AGENT] Is verification response: {is_verification}")
-        if is_verification:
-            logger.info(f"🔄 [SWIGGY_AGENT] Handling step verification")
-            return await self._handle_step_verification(session_id, user_input, state)
-        
-        # Check if user is asking a question (interruption)
-        is_interruption = self._is_interruption(user_input)
-        logger.info(f"🔄 [SWIGGY_AGENT] Is interruption: {is_interruption}")
-        if is_interruption:
-            logger.info(f"🔄 [SWIGGY_AGENT] Handling interruption")
-            return await self._handle_interruption(session_id, user_input, state)
-        
-        # Check if user wants to start a new workflow
-        is_new_workflow = self._is_swiggy_request(user_input)
-        logger.info(f"🔄 [SWIGGY_AGENT] Is new workflow request: {is_new_workflow}")
-        if is_new_workflow:
-            logger.info(f"🔄 [SWIGGY_AGENT] Starting new workflow")
-            return await self._start_new_workflow(session_id, user_input)
-        
-        # Default response
-        logger.info(f"🔄 [SWIGGY_AGENT] Providing default response")
-        return AssistantResponse(
-            session_id=session_id,
-            response_type=ResponseType.INSTRUCTION,
-            content="I'm here to help you with your Swiggy order. Say 'done' when you complete a step, or ask me any questions!",
-            ui_element=None,
-            next_step=None
-        )
-    
-    async def _handle_step_verification(self, session_id: str, user_input: str, state: Dict[str, Any]) -> AssistantResponse:
-        """Handle step verification"""
-        current_step_index = state.get('current_step_index', 0)
-        workflow_steps = state.get('workflow_steps', self.swiggy_steps)
-        
-        logger.info(f"✅ [SWIGGY_AGENT] ===== Handling step verification =====")
-        logger.info(f"✅ [SWIGGY_AGENT] Current step index: {current_step_index}")
-        logger.info(f"✅ [SWIGGY_AGENT] Total steps: {len(workflow_steps)}")
-        logger.info(f"✅ [SWIGGY_AGENT] Step {current_step_index + 1} completed, advancing to step {current_step_index + 2}")
-        
-        # Advance to next step
-        next_step_index = current_step_index + 1
-        
-        if next_step_index >= len(workflow_steps):
-            # Workflow completed
-            logger.info(f"🎉 [SWIGGY_AGENT] ===== Workflow completed! =====")
-            logger.info(f"🎉 [SWIGGY_AGENT] All {len(workflow_steps)} steps completed successfully")
-            
-            # Clear workflow state
-            logger.info(f"🎉 [SWIGGY_AGENT] Clearing workflow state from memory")
-            await in_memory_state_manager.delete_workflow_state(session_id)
-            logger.info(f"🎉 [SWIGGY_AGENT] Workflow state cleared")
-            
-            return AssistantResponse(
-                session_id=session_id,
-                response_type=ResponseType.INSTRUCTION,
-                content="🎉 Excellent! You've completed all the steps successfully! Your Swiggy order should be on its way. Is there anything else I can help you with?",
+                content=step_data["response"],
                 ui_element=None,
                 next_step=None
             )
         else:
-            # Continue to next step
-            current_step = workflow_steps[next_step_index]
-            content = f"Step {next_step_index + 1} of {len(workflow_steps)}: {current_step}\n\nLet me know when you've completed this step by saying 'done' or 'next'."
-            logger.info(f"✅ [SWIGGY_AGENT] Moving to step {next_step_index + 1}: {current_step}")
-            
-            # Update state
-            state['current_step_index'] = next_step_index
-            state['workflow_status'] = 'active'
-            state['waiting_for_verification'] = True
-            logger.info(f"✅ [SWIGGY_AGENT] Updated state - new step index: {next_step_index}")
-            
-            # Save to memory
-            logger.info(f"✅ [SWIGGY_AGENT] Saving updated state to memory")
-            await in_memory_state_manager.save_workflow_state(session_id, state)
-            logger.info(f"✅ [SWIGGY_AGENT] State saved successfully")
-            
-            response = AssistantResponse(
+            # Guide user to start the conversation
+            return AssistantResponse(
                 session_id=session_id,
                 response_type=ResponseType.INSTRUCTION,
-                content=content,
+                content="Hello! I can help you order food online. To get started, please tell me: 'I need to order food online'",
                 ui_element=None,
                 next_step=None
             )
-            logger.info(f"✅ [SWIGGY_AGENT] Returning response for step {next_step_index + 1}")
-            return response
     
-    async def _handle_interruption(self, session_id: str, user_input: str, state: Dict[str, Any]) -> AssistantResponse:
-        """Handle user questions/interruptions using LLM"""
-        current_step_index = state.get('current_step_index', 0)
-        workflow_steps = state.get('workflow_steps', self.swiggy_steps)
-        current_step = workflow_steps[current_step_index] if current_step_index < len(workflow_steps) else "Unknown"
+    async def _handle_conversation_step(self, session_id: str, user_input: str, current_step: int) -> AssistantResponse:
+        """Handle ongoing conversation based on current step"""
+        logger.info(f"🔄 [SWIGGY_AGENT] ===== Handling conversation step =====")
+        logger.info(f"🔄 [SWIGGY_AGENT] Current step: {current_step}")
+        logger.info(f"🔄 [SWIGGY_AGENT] User input: {user_input}")
         
-        logger.info(f"🚨 [SWIGGY_AGENT] ===== Handling interruption =====")
-        logger.info(f"🚨 [SWIGGY_AGENT] User question: '{user_input}'")
-        logger.info(f"🚨 [SWIGGY_AGENT] Current step: {current_step_index + 1} - {current_step}")
-        logger.info(f"🚨 [SWIGGY_AGENT] Total steps: {len(workflow_steps)}")
+        # Get expected inputs for the CURRENT step (not next step)
+        current_step_data = self.conversation_steps[current_step]
+        expected_inputs = current_step_data.get("next_expected", [])
         
-        # Save interruption to Redis for frontend escalation
-        interruption_data = {
-            "type": "workflow_interruption",
-            "user_input": user_input,
-            "workflow_type": "swiggy_order_food",
-            "current_step_index": current_step_index,
-            "current_step": current_step,
-            "total_steps": len(workflow_steps),
-            "workflow_status": state.get('workflow_status', 'unknown')
-        }
+        logger.info(f"🔄 [SWIGGY_AGENT] Expected inputs: {expected_inputs}")
         
-        logger.info(f"🚨 [SWIGGY_AGENT] Saving interruption data to memory")
-        await in_memory_state_manager.save_interruption(session_id, interruption_data)
-        logger.info(f"🚨 [SWIGGY_AGENT] Interruption saved successfully")
+        # Check if user input matches any expected input
+        user_input_clean = user_input.lower().strip()
+        matches = False
+        for expected in expected_inputs:
+            if expected.lower().strip() == user_input_clean or expected.lower().strip() in user_input_clean:
+                matches = True
+                break
         
-        # Generate contextual response using LLM
-        try:
-            logger.info(f"🤖 [SWIGGY_AGENT] Generating LLM response for interruption")
-            response = await self._generate_interruption_response(user_input, current_step, current_step_index, workflow_steps)
-            logger.info(f"🤖 [SWIGGY_AGENT] LLM response generated successfully")
-            logger.info(f"🤖 [SWIGGY_AGENT] Response length: {len(response)} characters")
-        except Exception as e:
-            logger.error(f"❌ [SWIGGY_AGENT] Error generating LLM response: {e}")
-            logger.error(f"❌ [SWIGGY_AGENT] Error type: {type(e).__name__}")
-            # Fallback to simple response
-            response = f"I understand you have a question about: '{user_input}'\n\nYou're currently on Step {current_step_index + 1}: {current_step}\n\nI'm here to help! What would you like to know about this step?"
-            logger.info(f"❌ [SWIGGY_AGENT] Using fallback response")
+        logger.info(f"🔄 [SWIGGY_AGENT] Input matches expected: {matches}")
         
-        response_obj = AssistantResponse(
-            session_id=session_id,
-            response_type=ResponseType.INSTRUCTION,
-            content=response,
-            ui_element=None,
-            next_step=None
-        )
-        logger.info(f"🚨 [SWIGGY_AGENT] Returning interruption response")
-        return response_obj
-    
-    async def _generate_interruption_response(self, user_question: str, current_step: str, current_step_index: int, workflow_steps: List[str]) -> str:
-        """Generate contextual response using LLM for user questions during workflow"""
-        logger.info(f"🤖 [SWIGGY_AGENT] ===== Generating LLM response =====")
-        logger.info(f"🤖 [SWIGGY_AGENT] User question: '{user_question}'")
-        logger.info(f"🤖 [SWIGGY_AGENT] Current step: {current_step_index + 1} - {current_step}")
-        logger.info(f"🤖 [SWIGGY_AGENT] Total workflow steps: {len(workflow_steps)}")
-        
-        # Create context for the LLM
-        workflow_context = "\n".join([f"{i+1}. {step}" for i, step in enumerate(workflow_steps)])
-        logger.info(f"🤖 [SWIGGY_AGENT] Created workflow context with {len(workflow_steps)} steps")
-        
-        prompt = f"""You are a helpful assistant guiding a user through ordering food from Swiggy. The user is currently on step {current_step_index + 1} of {len(workflow_steps)}.
-
-Current Step: {current_step}
-
-Complete Workflow:
-{workflow_context}
-
-User's Question: "{user_question}"
-
-Please provide a helpful, specific answer to their question while keeping them focused on the current step. Be encouraging and provide practical guidance. Keep your response concise (2-3 sentences) and actionable.
-
-Response:"""
-
-        logger.info(f"🤖 [SWIGGY_AGENT] Prompt length: {len(prompt)} characters")
-        logger.info(f"🤖 [SWIGGY_AGENT] Calling OpenAI API with gpt-3.5-turbo")
-
-        try:
-            response = await self.ai_service.generate_text(
-                prompt=prompt,
-                model="gpt-3.5-turbo",
-                max_tokens=150,
-                temperature=0.7
+        if matches:
+            # Move to next step
+            next_step = current_step + 1
+            
+            if next_step < len(self.conversation_steps):
+                logger.info(f"🔄 [SWIGGY_AGENT] Advancing to step {next_step}")
+                
+                # Update state to next step
+                conversation_state = {
+                    "session_id": session_id,
+                    "current_step_index": next_step,
+                    "workflow_type": "food_ordering_conversation",
+                    "workflow_status": "active"
+                }
+                await in_memory_state_manager.save_workflow_state(session_id, conversation_state)
+                
+                # Return response for next step
+                step_data = self.conversation_steps[next_step]
+                return AssistantResponse(
+                    session_id=session_id,
+                    response_type=ResponseType.INSTRUCTION,
+                    content=step_data["response"],
+                    ui_element=None,
+                    next_step=None
+                )
+            else:
+                # Conversation completed
+                logger.info(f"🎉 [SWIGGY_AGENT] Conversation completed!")
+                await in_memory_state_manager.delete_workflow_state(session_id)
+                
+                return AssistantResponse(
+                    session_id=session_id,
+                    response_type=ResponseType.INSTRUCTION,
+                    content="🎉 Congratulations! You have successfully placed your food order! Your delicious meal will be delivered to you soon. Enjoy your food! 🍽️\n\nIf you need help with anything else, just let me know!",
+                    ui_element=None,
+                    next_step=None
+                )
+        else:
+            # If user input doesn't match expected, provide guidance
+            return AssistantResponse(
+                session_id=session_id,
+                response_type=ResponseType.INSTRUCTION,
+                content=f"I'm waiting for you to respond with one of these: {', '.join(expected_inputs)}.\n\nPlease follow the instructions I gave you and then respond accordingly.",
+                ui_element=None,
+                next_step=None
             )
-            logger.info(f"🤖 [SWIGGY_AGENT] OpenAI API response received")
-            logger.info(f"🤖 [SWIGGY_AGENT] Response length: {len(response)} characters")
-            logger.info(f"🤖 [SWIGGY_AGENT] Response preview: {response[:100]}...")
-            return response.strip()
-        except Exception as e:
-            logger.error(f"❌ [SWIGGY_AGENT] Error generating LLM response: {e}")
-            logger.error(f"❌ [SWIGGY_AGENT] Error type: {type(e).__name__}")
-            raise e
     
-    def _is_swiggy_request(self, user_input: str) -> bool:
-        """Check if user wants to order from Swiggy"""
-        swiggy_keywords = ['swiggy', 'order food', 'order from swiggy', 'food delivery', 'swiggy order']
-        user_lower = user_input.lower()
-        result = any(keyword in user_lower for keyword in swiggy_keywords)
-        logger.debug(f"🔍 [SWIGGY_AGENT] _is_swiggy_request('{user_input}') = {result}")
-        return result
-    
-    def _is_verification_response(self, user_input: str) -> bool:
-        """Check if user is confirming a step"""
-        verification_responses = ['done', 'next', 'completed', 'finished', 'yes', 'ok', 'ready', 'continue']
-        user_lower = user_input.lower().strip()
-        result = any(response in user_lower for response in verification_responses)
-        logger.debug(f"🔍 [SWIGGY_AGENT] _is_verification_response('{user_input}') = {result}")
-        return result
-    
-    def _is_interruption(self, user_input: str) -> bool:
-        """Check if user is asking a question"""
-        # First check for verification responses - these are NOT interruptions
-        if self._is_verification_response(user_input):
-            logger.debug(f"🔍 [SWIGGY_AGENT] _is_interruption('{user_input}') = False (verification response)")
+    def _matches_step(self, user_input: str, step_index: int) -> bool:
+        """Check if user input matches expected input for a step"""
+        if step_index >= len(self.conversation_steps):
             return False
+            
+        step_data = self.conversation_steps[step_index]
+        expected_inputs = step_data.get("next_expected", [])
         
-        # Then check for interruption keywords
-        interruption_keywords = [
-            'how', 'what', 'where', 'why', 'when', 'which', 'can you', 'could you',
-            'help', 'explain', 'show', 'tell me', 'i don\'t understand', 'confused',
-            'stuck', 'problem', 'error', 'not working', 'can\'t find', 'difficult'
-        ]
+        # Normalize user input
+        user_input_clean = user_input.lower().strip()
         
-        user_lower = user_input.lower()
-        result = any(keyword in user_lower for keyword in interruption_keywords)
-        logger.debug(f"🔍 [SWIGGY_AGENT] _is_interruption('{user_input}') = {result}")
-        return result
+        # Check against expected inputs
+        for expected in expected_inputs:
+            if expected.lower().strip() == user_input_clean or expected.lower().strip() in user_input_clean:
+                return True
+        
+        # For step 0, also check for variations of "order food"
+        if step_index == 0:
+            food_keywords = ["order food", "food online", "order", "hungry", "eat"]
+            return any(keyword in user_input_clean for keyword in food_keywords)
+        
+        return False
     
     def _get_error_response(self, session_id: str, error_message: str) -> AssistantResponse:
-        """Get error response"""
-        logger.error(f"❌ [SWIGGY_AGENT] Creating error response for session: {session_id}")
-        logger.error(f"❌ [SWIGGY_AGENT] Error message: {error_message}")
+        """Generate error response"""
         return AssistantResponse(
             session_id=session_id,
-            response_type=ResponseType.ERROR,
-            content=f"I'm sorry, I encountered an error: {error_message}. Please try again.",
+            response_type=ResponseType.INSTRUCTION,
+            content=f"I'm sorry, something went wrong. Please try again or tell me 'I need to order food online' to start over.",
             ui_element=None,
             next_step=None
         )
