@@ -16,14 +16,17 @@ class FullLLMSwiggyAgent:
     
     def __init__(self):
         self.swiggy_steps = [
-            "Open the Swiggy app on your phone",
-            "Search for the food you want to order",
-            "Select a restaurant from the results",
-            "Choose the items you want to order",
-            "Add items to your cart",
-            "Review your order and proceed to checkout",
-            "Enter your delivery address",
-            "Select payment method and place order"
+            "Open the Swiggy app on your phone. If you don't see the Swiggy app, say 'I don't see the Swiggy app' and I'll help you find it.",
+            "Search for the food you want to order. A simple search like 'Pizza' or 'Biriyani' will work. If you don't see the search bar, say 'I don't see the search bar' and I'll help you find it.",
+            "Select a restaurant from the results. If you don't find the restaurant, say 'I don't see the restaurant' and I'll help you find it.",
+            "Choose the items you want to order. If you don't find the item, say 'I don't see the item' and I'll help you find it.",
+            "Add items to your cart. When clicked the Add button, you may asked to customize the item by adding toppings, sauces, etc. If you don't want to customize, just click Add Item button without selecting anything.",
+            "Once you have added all the items you want to order, clickon the 'View Cart' button. If you don't see the 'View Cart' button, say 'I don't see the View Cart button' and I'll help you find it.",
+            "Once you are in the cart page, a pop up might appear with Instant discount offer. You can click on the 'YAY' button to apply the discount. If you don't need the discount, just click on the 'X' button at the top right corner of the pop up.",
+            "Review the items in your card and Click on the 'Proceed to Pay' button.",
+            "Now you will be in the Payment options page where all the payment options will be listed. You can select the payment option you want to use. If you don't see the payment option you want to use, say 'I don't see the payment option' and I'll help you find it.",
+            "Once you have found the desired payment option, click over the payment option. You will be redirected to the payment page where you can enter your payment details. If you don't see the payment page, say 'I don't see the payment page' and I'll help you find it.",
+            "You have successfully placed your order. You can see the order in the 'Orders' tab. If you don't see the order, say 'I don't see the order' and I'll help you find it.",
         ]
         self.ai_service = AIService()
     
