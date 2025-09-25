@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeHands Senior AI Assistant - Test Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-container {
+            width: 90%;
+            max-width: 800px;
+            height: 90vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .chat-header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .connection-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .connected {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .disconnected {
+            background: #f44336;
+            color: white;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.assistant {
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+        }
+
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 18px;
+            border: 1px solid #e0e0e0;
+            max-width: 70%;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #999;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        .chat-input {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .input-group {
+            flex: 1;
+            display: flex;
+            gap: 10px;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .message-input:focus {
+            border-color: #667eea;
+        }
+
+        .send-button {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        .send-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .send-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .quick-action {
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+
+        .quick-action:hover {
+            background: #e0e0e0;
+        }
+
+        .screen-upload {
+            position: relative;
+            display: inline-block;
+        }
+
+        .screen-upload input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .upload-button {
+            padding: 12px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        .upload-button:hover {
+            background: #45a049;
+        }
+
+        .system-message {
+            text-align: center;
+            padding: 10px;
+            background: #e3f2fd;
+            color: #1976d2;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .interruption-alert {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+            animation: slideInFromTop 0.5s ease-out;
+        }
+
+        .interruption-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .interruption-icon {
+            font-size: 20px;
+            margin-right: 10px;
+        }
+
+        .interruption-title {
+            flex: 1;
+        }
+
+        .interruption-content {
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .interruption-content p {
+            margin: 5px 0;
+        }
+
+        .interruption-actions {
+            text-align: right;
+        }
+
+        .interruption-dismiss {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .interruption-dismiss:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        @keyframes slideInFromTop {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .success-message {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .guidance-steps {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .guidance-step {
+            margin: 5px 0;
+            padding: 5px 10px;
+            background: white;
+            border-radius: 5px;
+            border-left: 3px solid #667eea;
+        }
+
+        .metadata {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 5px;
+            padding: 5px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+
+        .audio-response {
+            margin-top: 8px;
+            padding: 8px;
+            background: #e8f4fd;
+            border-radius: 8px;
+            border: 1px solid #4facfe;
+        }
+
+        .audio-play-button {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .audio-play-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(79, 172, 254, 0.3);
+        }
+
+        .audio-play-button:active {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 768px) {
+            .chat-container {
+                width: 95%;
+                height: 95vh;
+            }
+            
+            .message-content {
+                max-width: 85%;
+            }
+            
+            .quick-actions {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>🤖 SafeHands Senior AI Assistant</h1>
+            <p>Test Interface - Your intelligent companion for app guidance</p>
+            <div class="connection-status" id="connectionStatus">Connecting...</div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="system-message">
+                Welcome! I'm your SafeHands Senior AI Assistant. I can help you with:
+                <br>• App guidance and step-by-step instructions
+                <br>• Screen analysis and UI element detection
+                <br>• Voice and text interactions
+                <br>• Error detection and recovery
+            </div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            <div class="typing-dots">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+
+        <div class="chat-input">
+            <div class="quick-actions">
+                <button class="quick-action" onclick="sendQuickMessage('I want to order food from Swiggy')">🍕 Order Food</button>
+                <button class="quick-action" onclick="sendMessage()">💬 Send Message</button>
+                <button class="quick-action" onclick="sendQuickMessage('Pay my bill')">💳 Pay Bill</button>
+                <button class="quick-action" onclick="sendQuickMessage('Make a call')">📞 Make Call</button>
+                <button class="quick-action" onclick="sendQuickMessage('Help me with my phone')">❓ Help</button>
+            </div>
+            
+            <div class="input-group">
+                <input type="text" id="messageInput" class="message-input" placeholder="Type your message or speak to me..." onkeypress="handleKeyPress(event)">
+                <button class="send-button" id="sendButton" onclick="sendMessage()">Send</button>
+                <div class="screen-upload">
+                    <input type="file" id="screenUpload" accept="image/*" onchange="uploadScreen()">
+                    <button class="upload-button">📱 Upload Screen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SafeHandsChat {
+            constructor() {
+                this.ws = null;
+                this.sessionId = this.generateSessionId();
+                this.isConnected = false;
+                this.messageQueue = [];
+                this.interruptionCheckInterval = null;
+                
+                this.initializeWebSocket();
+                this.setupEventListeners();
+                this.startInterruptionChecking();
+            }
+
+            generateSessionId() {
+                return 'test_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+            }
+
+            initializeWebSocket() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//localhost:8000/ws/${this.sessionId}`;
+                
+                this.ws = new WebSocket(wsUrl);
+                
+                this.ws.onopen = () => {
+                    this.isConnected = true;
+                    this.updateConnectionStatus('Connected', 'connected');
+                    this.processMessageQueue();
+                    this.addSystemMessage('Connected to SafeHands AI Assistant!', 'success');
+                };
+
+                this.ws.onmessage = (event) => {
+                    this.handleMessage(JSON.parse(event.data));
+                };
+
+                this.ws.onclose = () => {
+                    this.isConnected = false;
+                    this.updateConnectionStatus('Disconnected', 'disconnected');
+                    this.addSystemMessage('Connection lost. Attempting to reconnect...', 'error');
+                    
+                    // Attempt to reconnect after 3 seconds
+                    setTimeout(() => {
+                        this.initializeWebSocket();
+                    }, 3000);
+                };
+
+                this.ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    this.addSystemMessage('Connection error occurred.', 'error');
+                };
+            }
+
+            setupEventListeners() {
+                // Voice input (if supported)
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    this.setupVoiceInput();
+                }
+            }
+
+            startInterruptionChecking() {
+                // Check for interruptions every 2 seconds
+                this.interruptionCheckInterval = setInterval(() => {
+                    this.checkForInterruptions();
+                }, 2000);
+            }
+
+            stopInterruptionChecking() {
+                if (this.interruptionCheckInterval) {
+                    clearInterval(this.interruptionCheckInterval);
+                    this.interruptionCheckInterval = null;
+                }
+            }
+
+            async checkForInterruptions() {
+                try {
+                    const response = await fetch(`http://localhost:8000/workflow/interruption/${this.sessionId}`);
+                    const data = await response.json();
+                    
+                    if (data.status === 'success' && data.interruption) {
+                        this.displayInterruption(data.interruption);
+                        // Mark interruption as escalated
+                        await fetch(`http://localhost:8000/workflow/interruption/${this.sessionId}/escalated`, {
+                            method: 'POST'
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error checking for interruptions:', error);
+                }
+            }
+
+            displayInterruption(interruption) {
+                const interruptionHtml = `
+                    <div class="interruption-alert">
+                        <div class="interruption-header">
+                            <span class="interruption-icon">🚨</span>
+                            <span class="interruption-title">Workflow Interruption Detected</span>
+                        </div>
+                        <div class="interruption-content">
+                            <p><strong>User Question:</strong> "${interruption.user_input}"</p>
+                            <p><strong>Current Step:</strong> ${interruption.current_step}</p>
+                            <p><strong>Progress:</strong> Step ${interruption.current_step_index + 1} of ${interruption.total_steps}</p>
+                            <p><strong>Workflow:</strong> ${interruption.workflow_type}</p>
+                        </div>
+                        <div class="interruption-actions">
+                            <button onclick="this.parentElement.parentElement.remove()" class="interruption-dismiss">Dismiss</button>
+                        </div>
+                    </div>
+                `;
+                
+                // Add interruption alert to the chat
+                const chatMessages = document.getElementById('chatMessages');
+                chatMessages.insertAdjacentHTML('beforeend', interruptionHtml);
+                
+                // Scroll to bottom
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            setupVoiceInput() {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                this.recognition = new SpeechRecognition();
+                this.recognition.continuous = false;
+                this.recognition.interimResults = false;
+                this.recognition.lang = 'en-US';
+
+                this.recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    document.getElementById('messageInput').value = transcript;
+                    this.sendMessage();
+                };
+
+                this.recognition.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                };
+            }
+
+            updateConnectionStatus(text, className) {
+                const statusElement = document.getElementById('connectionStatus');
+                statusElement.textContent = text;
+                statusElement.className = `connection-status ${className}`;
+            }
+
+            addSystemMessage(text, type = 'info') {
+                const messagesContainer = document.getElementById('chatMessages');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `system-message ${type}-message`;
+                messageDiv.textContent = text;
+                messagesContainer.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+
+            addMessage(content, sender, metadata = null) {
+                const messagesContainer = document.getElementById('chatMessages');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}`;
+
+                const messageContent = document.createElement('div');
+                messageContent.className = 'message-content';
+
+                // Handle different message types
+                if (typeof content === 'string') {
+                    messageContent.innerHTML = this.formatMessage(content);
+                } else if (content.guidance && Array.isArray(content.guidance)) {
+                    messageContent.innerHTML = this.formatGuidanceMessage(content);
+                } else {
+                    messageContent.innerHTML = this.formatMessage(content.message || JSON.stringify(content));
+                }
+
+                // Add audio response if available
+                if (metadata && metadata.audio_response) {
+                    const audioDiv = document.createElement('div');
+                    audioDiv.className = 'audio-response';
+                    
+                    const audioButton = document.createElement('button');
+                    audioButton.className = 'audio-play-button';
+                    audioButton.innerHTML = '🔊 Play Audio';
+                    audioButton.onclick = () => this.playAudioResponse(metadata.audio_response);
+                    
+                    audioDiv.appendChild(audioButton);
+                    messageContent.appendChild(audioDiv);
+                }
+
+                // Add metadata if available
+                if (metadata) {
+                    const metadataDiv = document.createElement('div');
+                    metadataDiv.className = 'metadata';
+                    metadataDiv.textContent = `Confidence: ${metadata.confidence || 'N/A'} | Type: ${metadata.type || 'N/A'}`;
+                    messageContent.appendChild(metadataDiv);
+                }
+
+                // Add timestamp
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'message-time';
+                timeDiv.textContent = new Date().toLocaleTimeString();
+                messageContent.appendChild(timeDiv);
+
+                messageDiv.appendChild(messageContent);
+                messagesContainer.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+
+            formatMessage(text) {
+                // Basic formatting for better readability
+                return text
+                    .replace(/\n/g, '<br>')
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*(.*?)\*/g, '<em>$1</em>');
+            }
+
+            formatGuidanceMessage(content) {
+                let html = `<div class="guidance-message">`;
+                
+                if (content.message) {
+                    html += `<div class="guidance-text">${this.formatMessage(content.message)}</div>`;
+                }
+
+                if (content.guidance && Array.isArray(content.guidance)) {
+                    html += `<div class="guidance-steps">`;
+                    html += `<strong>Step-by-step guidance:</strong>`;
+                    content.guidance.forEach((step, index) => {
+                        html += `<div class="guidance-step">${index + 1}. ${step}</div>`;
+                    });
+                    html += `</div>`;
+                }
+
+                if (content.current_step) {
+                    html += `<div class="current-step"><strong>Current step:</strong> ${content.current_step}</div>`;
+                }
+
+                html += `</div>`;
+                return html;
+            }
+
+            showTypingIndicator() {
+                document.getElementById('typingIndicator').style.display = 'block';
+                this.scrollToBottom();
+            }
+
+            hideTypingIndicator() {
+                document.getElementById('typingIndicator').style.display = 'none';
+            }
+
+            scrollToBottom() {
+                const messagesContainer = document.getElementById('chatMessages');
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            playAudioResponse(audioResponse) {
+                try {
+                    // If audioResponse is a string (text), use text-to-speech
+                    if (typeof audioResponse === 'string') {
+                        this.speakText(audioResponse);
+                    } else if (audioResponse instanceof ArrayBuffer || audioResponse instanceof Uint8Array) {
+                        // If it's binary audio data, play it directly
+                        this.playAudioData(audioResponse);
+                    } else {
+                        console.log('Unknown audio response format:', audioResponse);
+                        // Fallback to text-to-speech
+                        this.speakText(audioResponse.toString());
+                    }
+                } catch (error) {
+                    console.error('Error playing audio response:', error);
+                    // Fallback to text-to-speech
+                    this.speakText(audioResponse.toString());
+                }
+            }
+
+            speakText(text) {
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1;
+                    utterance.volume = 0.8;
+                    speechSynthesis.speak(utterance);
+                } else {
+                    console.log('Speech synthesis not supported');
+                }
+            }
+
+            playAudioData(audioData) {
+                try {
+                    const blob = new Blob([audioData], { type: 'audio/mpeg' });
+                    const audioUrl = URL.createObjectURL(blob);
+                    const audio = new Audio(audioUrl);
+                    audio.play().then(() => {
+                        console.log('Audio playing');
+                    }).catch(error => {
+                        console.error('Error playing audio:', error);
+                        // Fallback to text-to-speech
+                        this.speakText('Audio playback failed, using text-to-speech instead');
+                    });
+                } catch (error) {
+                    console.error('Error creating audio from data:', error);
+                    this.speakText('Audio playback failed, using text-to-speech instead');
+                }
+            }
+
+            async sendMessage(text = null) {
+                const messageInput = document.getElementById('messageInput');
+                const message = text || messageInput.value.trim();
+                
+                if (!message) return;
+
+                // Clear input
+                messageInput.value = '';
+
+                // Add user message to chat
+                this.addMessage(message, 'user');
+
+                // Show typing indicator
+                this.showTypingIndicator();
+
+                // Send via WebSocket
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    console.log('🍔 [WEBSOCKET] Sending:', message);
+                    
+                    const messageData = {
+                        message_type: 'text',
+                        data: {
+                            session_id: this.sessionId,
+                            text: message,
+                            timestamp: new Date().toISOString(),
+                            language: 'en-US'
+                        }
+                    };
+
+                    this.ws.send(JSON.stringify(messageData));
+                } else {
+                    this.hideTypingIndicator();
+                    this.addSystemMessage('WebSocket not connected. Please refresh the page.', 'error');
+                }
+            }
+
+            uploadScreen() {
+                const fileInput = document.getElementById('screenUpload');
+                const file = fileInput.files[0];
+                
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const base64Data = e.target.result.split(',')[1];
+                    
+                    // Add user message to chat
+                    this.addMessage('📱 Screen shared', 'user');
+
+                    // Show typing indicator
+                    this.showTypingIndicator();
+
+                    // Send screen data via WebSocket
+                    const messageData = {
+                        message_type: 'screen',
+                        data: {
+                            screenshot_data: base64Data,
+                            format: 'base64',
+                            timestamp: new Date().toISOString()
+                        }
+                    };
+
+                    this.sendWebSocketMessage(messageData);
+                };
+                reader.readAsDataURL(file);
+            }
+
+            sendWebSocketMessage(messageData) {
+                if (this.isConnected) {
+                    this.ws.send(JSON.stringify(messageData));
+                } else {
+                    this.messageQueue.push(messageData);
+                    this.addSystemMessage('Message queued. Will send when connected.', 'error');
+                }
+            }
+
+            processMessageQueue() {
+                while (this.messageQueue.length > 0) {
+                    const message = this.messageQueue.shift();
+                    this.ws.send(JSON.stringify(message));
+                }
+            }
+
+            handleMessage(data) {
+                console.log('🍔 [WEBSOCKET] Received message:', data);
+                this.hideTypingIndicator();
+
+                // Filter out system messages that shouldn't be shown to users
+                if (data.message_type === 'response' && data.data && data.data.type === 'connection_established') {
+                    // Connection established - don't show in chat, just log to console
+                    console.log('Connected to SafeHands Assistant');
+                    return;
+                }
+
+                if (data.message_type === 'heartbeat') {
+                    // Heartbeat messages - don't show in chat, just log to console
+                    console.log('Heartbeat received');
+                    return;
+                }
+
+                if (data.message_type === 'error') {
+                    this.addSystemMessage(`Error: ${data.data?.error_message || 'Unknown error'}`, 'error');
+                    return;
+                }
+
+                // Handle WebSocket response format
+                if (data.message_type === 'response' && data.data) {
+                    const responseData = data.data;
+                    const content = responseData.content;
+                    const responseType = responseData.type;
+                    
+                    if (content) {
+                        // Add AI response to chat
+                        this.addMessage(content, 'assistant');
+                        
+                        // Generate audio response
+                        this.speak(content);
+                    } else {
+                        console.log('No content in response:', responseData);
+                    }
+                } else if (data.type === 'error') {
+                    this.addSystemMessage(`Error: ${data.message}`, 'error');
+                    return;
+                } else {
+                    // Fallback for unknown message types
+                    console.log('Unknown message type:', data);
+                }
+            }
+        }
+
+        // Global functions for HTML onclick events
+        function sendMessage() {
+            chat.sendMessage();
+        }
+
+        function sendQuickMessage(message) {
+            chat.sendMessage(message);
+        }
+
+        function uploadScreen() {
+            chat.uploadScreen();
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // Initialize chat when page loads
+        let chat;
+        window.addEventListener('load', () => {
+            chat = new SafeHandsChat();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # Redis for session management and caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  # PostgreSQL for persistent data
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: safehands
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # SafeHands Backend
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://user:password@postgres/safehands
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+      - postgres
+    volumes:
+      - ./app:/app/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  redis_data:
+  postgres_data:
