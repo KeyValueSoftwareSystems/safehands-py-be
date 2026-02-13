@@ -15,7 +15,7 @@ langchain==0.0.350
 langgraph==0.0.20
 
 # Image Processing
-pillow==10.1.0
+pillow==10.3.0
 opencv-python==4.8.1.78
 
 # Audio Processing
